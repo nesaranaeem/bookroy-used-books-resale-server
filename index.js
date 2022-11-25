@@ -74,6 +74,22 @@ const run = async () => {
       console.log(user);
       res.send({ isAdmin: user?.userRole === "admin" });
     });
+    //match buyer
+    app.get("/buyer/:userEmail", async (req, res) => {
+      const userEmail = req.params.userEmail;
+      const query = { userEmail };
+      const user = await usersCollection.findOne(query);
+      res.send({ isBuyer: user?.userRole === "buyer" });
+    });
+    //match seller
+    app.get("/seller/:userEmail", async (req, res) => {
+      const userEmail = req.params.userEmail;
+      const query = { userEmail };
+      console.log(query);
+      const user = await usersCollection.findOne(query);
+      console.log(user);
+      res.send({ isSeller: user?.userRole === "seller" });
+    });
     //get users
     app.get("/users", async (req, res) => {
       const query = {};
