@@ -49,7 +49,7 @@ const run = async () => {
     //verify admin or not
     const verifyAdmin = async (req, res, next) => {
       const decodedEmail = req.decoded.email;
-      const query = { email: decodedEmail };
+      const query = { userEmail: decodedEmail };
       const user = await usersCollection.findOne(query);
 
       if (user?.userRole !== "admin") {
@@ -86,16 +86,41 @@ const run = async () => {
       const result = await usersCollection.insertOne(user);
       res.send(result);
     });
+    //all seller
+    app.get("/seller", verifyJWT, async (req, res) => {
+      const query = { userRole: "seller" };
+      const users = await usersCollection.find(query).toArray();
+      res.send(users);
+    });
+    //all buyer
+    app.get("/buyers", async (req, res) => {
+      const query = { userRole: "buyer" };
+      const users = await usersCollection.find(query).toArray();
+      res.send(users);
+    });
+    //delete user
+    app.delete("/user/:id", verifyJWT, verifyAdmin, async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: ObjectId(id) };
+      const result = await usersCollection.deleteOne(filter);
+      res.send(result);
+    });
 
+    //all seller
+    app.get("/sellers", async (req, res) => {
+      const query = { userRole: "seller" };
+      const users = await usersCollection.find(query).toArray();
+      res.send(users);
+    });
     app.put("/users/admin/:id", verifyJWT, verifyAdmin, async (req, res) => {
-      const decodedEmail = req.decoded.userEmail;
+      const decodedEmail = req.decoded.email;
       const query = { userEmail: decodedEmail };
       const user = await usersCollection.findOne(query);
 
       if (user?.userRole !== "admin") {
         return res.status(403).send({ message: "forbidden access" });
       }
-      console.log(user);
+
       const id = req.params.id;
       const filter = { _id: ObjectId(id) };
       const options = { upsert: true };
