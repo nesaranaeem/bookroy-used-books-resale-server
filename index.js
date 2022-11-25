@@ -45,6 +45,7 @@ app.listen(port, () => {
 const run = async () => {
   try {
     const usersCollection = client.db("bookRoy").collection("users");
+    const productsCollection = client.db("bookRoy").collection("products");
 
     //verify admin or not
     const verifyAdmin = async (req, res, next) => {
@@ -53,6 +54,17 @@ const run = async () => {
       const user = await usersCollection.findOne(query);
 
       if (user?.userRole !== "admin") {
+        return res.status(403).send({ message: "forbidden access" });
+      }
+      next();
+    };
+    //verify seller or not
+    const verifySeller = async (req, res, next) => {
+      const decodedEmail = req.decoded.email;
+      const query = { userEmail: decodedEmail };
+      const user = await usersCollection.findOne(query);
+
+      if (user?.userRole !== "seller") {
         return res.status(403).send({ message: "forbidden access" });
       }
       next();
@@ -150,6 +162,12 @@ const run = async () => {
         updatedDoc,
         options
       );
+      res.send(result);
+    });
+    //post product
+    app.post("/products", verifyJWT, verifySeller, async (req, res) => {
+      const doctor = req.body;
+      const result = await productsCollection.insertOne(doctor);
       res.send(result);
     });
     //stripe
