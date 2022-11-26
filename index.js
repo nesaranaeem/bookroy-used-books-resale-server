@@ -265,11 +265,25 @@ const run = async () => {
     //get product from category
     app.get("/category/:id", async (req, res) => {
       const id = req.params.id;
-      const query = { productCategory: id };
+      const query = { productCategory: id, productStatus: "available" };
       const sort = { length: -1 };
       const cursor = productsCollection.find(query).sort({ _id: -1 });
       const review = await cursor.toArray();
       res.send(review);
+    });
+    //get all products
+    app.get("/all-product", async (req, res) => {
+      const query = { productStatus: "available" };
+      const sort = { length: -1 };
+      const cursor = productsCollection.find(query).sort({ _id: -1 });
+      const review = await cursor.toArray();
+      res.send(review);
+    });
+    //get users
+    app.get("/users", async (req, res) => {
+      const query = {};
+      const users = await productsCollection.find(query).toArray();
+      res.send(users);
     });
     //stripe
     app.post("/create-payment-intent", async (req, res) => {
