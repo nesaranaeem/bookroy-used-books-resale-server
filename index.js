@@ -46,6 +46,7 @@ const run = async () => {
   try {
     const usersCollection = client.db("bookRoy").collection("users");
     const productsCollection = client.db("bookRoy").collection("products");
+    const categoriesCollection = client.db("bookRoy").collection("categories");
 
     //verify admin or not
     const verifyAdmin = async (req, res, next) => {
@@ -245,6 +246,31 @@ const run = async () => {
       const result = await productsCollection.insertOne(doctor);
       res.send(result);
     });
+    //get promoted products
+    app.get("/promoted-products", async (req, res) => {
+      const query = { isAdvertise: true, productStatus: "available" };
+      const products = await productsCollection.find(query).toArray();
+      res.send(products);
+    });
+    //get product owner
+    app.get("/idDetails", async (req, res) => {
+      const query = {
+        userEmail: req.query.email,
+      };
+
+      const cursor = usersCollection.find(query);
+      const id = await cursor.toArray();
+      res.send(id);
+    });
+    //get product from category
+    app.get("/category/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { productCategory: id };
+      const sort = { length: -1 };
+      const cursor = productsCollection.find(query).sort({ _id: -1 });
+      const review = await cursor.toArray();
+      res.send(review);
+    });
     //stripe
     app.post("/create-payment-intent", async (req, res) => {
       const booking = req.body;
@@ -277,6 +303,11 @@ const run = async () => {
       const query = {};
       const users = await usersCollection.find(query).toArray();
       res.send(users);
+    });
+    app.get("/categories", async (req, res) => {
+      const query = {};
+      const categories = await categoriesCollection.find(query).toArray();
+      res.send(categories);
     });
 
     app.post("/users", async (req, res) => {
