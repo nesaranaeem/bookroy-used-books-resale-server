@@ -47,6 +47,7 @@ const run = async () => {
     const usersCollection = client.db("bookRoy").collection("users");
     const productsCollection = client.db("bookRoy").collection("products");
     const categoriesCollection = client.db("bookRoy").collection("categories");
+    const reportsCollection = client.db("bookRoy").collection("reports");
 
     //verify admin or not
     const verifyAdmin = async (req, res, next) => {
@@ -271,12 +272,19 @@ const run = async () => {
       const review = await cursor.toArray();
       res.send(review);
     });
+    //get product details
+    app.get("/product/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: ObjectId(id) };
+      const product = await productsCollection.findOne(query);
+      res.send(product);
+    });
     //get all products
     app.get("/all-product", async (req, res) => {
       const query = { productStatus: "available" };
       const sort = { length: -1 };
       const cursor = productsCollection.find(query).sort({ _id: -1 });
-      const review = await cursor.toArray();
+      const review = await cursor.limit(6).toArray();
       res.send(review);
     });
     //get users
@@ -323,33 +331,18 @@ const run = async () => {
       const categories = await categoriesCollection.find(query).toArray();
       res.send(categories);
     });
-
+    //post report
+    app.post("/reports", verifyJWT, async (req, res) => {
+      const data = req.body;
+      const result = await reportsCollection.insertOne(data);
+      res.send(result);
+    });
     app.post("/users", async (req, res) => {
       const user = req.body;
       console.log(user);
       const result = await usersCollection.insertOne(user);
       res.send(result);
     });
-
-    //get doctors
-
-    //insert price
-    // temporary to update price field on appointment options
-    // app.get("/add-price", async (req, res) => {
-    //   const filter = {};
-    //   const options = { upsert: true };
-    //   const updatedDoc = {
-    //     $set: {
-    //       price: 99,
-    //     },
-    //   };
-    //   const result = await appointmentOptionsCollection.updateMany(
-    //     filter,
-    //     updatedDoc,
-    //     options
-    //   );
-    //   res.send(result);
-    // });
   } finally {
   }
 };
