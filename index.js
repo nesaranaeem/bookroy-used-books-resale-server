@@ -102,6 +102,55 @@ const run = async () => {
       console.log(user);
       res.send({ isSeller: user?.userRole === "seller" });
     });
+    //get sellers product
+    app.get("/products", verifyJWT, async (req, res) => {
+      const decoded = req.decoded;
+      if (decoded.email !== req.query.email) {
+        res.status(403).send({ message: "Unauthorized Access" });
+      }
+      let query = {};
+      if (req.query.email) {
+        query = {
+          productPostedBy: req.query.email,
+        };
+      }
+      console.log("seller", req.query.email);
+      const cursor = productsCollection.find(query);
+      const productsBy = await cursor.toArray();
+      res.send(productsBy);
+    });
+    //delete product of seller
+    app.delete("/product/:id", verifyJWT, verifySeller, async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: ObjectId(id) };
+      const result = await productsCollection.deleteOne(filter);
+      res.send(result);
+    });
+    //promote seller
+    app.put("/product/:id", verifyJWT, verifySeller, async (req, res) => {
+      const decodedEmail = req.decoded.email;
+      const query = { userEmail: decodedEmail };
+      const user = await usersCollection.findOne(query);
+
+      if (user?.userRole !== "seller") {
+        return res.status(403).send({ message: "forbidden access" });
+      }
+
+      const id = req.params.id;
+      const filter = { _id: ObjectId(id) };
+      const options = { upsert: true };
+      const updatedDoc = {
+        $set: {
+          isAdvertise: true,
+        },
+      };
+      const result = await productsCollection.updateOne(
+        filter,
+        updatedDoc,
+        options
+      );
+      res.send(result);
+    });
     //get users
     app.get("/users", async (req, res) => {
       const query = {};
@@ -164,6 +213,32 @@ const run = async () => {
       );
       res.send(result);
     });
+    //verify seller
+    app.put("/user/:id", verifyJWT, verifyAdmin, async (req, res) => {
+      const decodedEmail = req.decoded.email;
+      const query = { userEmail: decodedEmail };
+      const user = await usersCollection.findOne(query);
+
+      if (user?.userRole !== "admin") {
+        return res.status(403).send({ message: "forbidden access" });
+      }
+
+      const id = req.params.id;
+      const filter = { _id: ObjectId(id) };
+      const options = { upsert: true };
+      const updatedDoc = {
+        $set: {
+          isSellerVerified: true,
+        },
+      };
+      const result = await usersCollection.updateOne(
+        filter,
+        updatedDoc,
+        options
+      );
+      res.send(result);
+    });
+
     //post product
     app.post("/products", verifyJWT, verifySeller, async (req, res) => {
       const doctor = req.body;
