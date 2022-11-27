@@ -48,7 +48,7 @@ const run = async () => {
     const productsCollection = client.db("bookRoy").collection("products");
     const categoriesCollection = client.db("bookRoy").collection("categories");
     const reportsCollection = client.db("bookRoy").collection("reports");
-
+    const bookingsCollection = client.db("bookRoy").collection("bookings");
     //verify admin or not
     const verifyAdmin = async (req, res, next) => {
       const decodedEmail = req.decoded.email;
@@ -67,6 +67,17 @@ const run = async () => {
       const user = await usersCollection.findOne(query);
 
       if (user?.userRole !== "seller") {
+        return res.status(403).send({ message: "forbidden access" });
+      }
+      next();
+    };
+    //verify buyer
+    const verifyBuyer = async (req, res, next) => {
+      const decodedEmail = req.decoded.email;
+      const query = { userEmail: decodedEmail };
+      const user = await usersCollection.findOne(query);
+
+      if (user?.userRole !== "buyer") {
         return res.status(403).send({ message: "forbidden access" });
       }
       next();
@@ -116,7 +127,6 @@ const run = async () => {
           productPostedBy: req.query.email,
         };
       }
-      console.log("seller", req.query.email);
       const cursor = productsCollection.find(query);
       const productsBy = await cursor.toArray();
       res.send(productsBy);
@@ -266,7 +276,7 @@ const run = async () => {
     //get product from category
     app.get("/category/:id", async (req, res) => {
       const id = req.params.id;
-      const query = { productCategory: id, productStatus: "available" };
+      const query = { productCategory: id };
       const sort = { length: -1 };
       const cursor = productsCollection.find(query).sort({ _id: -1 });
       const review = await cursor.toArray();
@@ -281,7 +291,7 @@ const run = async () => {
     });
     //get all products
     app.get("/all-product", async (req, res) => {
-      const query = { productStatus: "available" };
+      const query = { isAdvertise: false };
       const sort = { length: -1 };
       const cursor = productsCollection.find(query).sort({ _id: -1 });
       const review = await cursor.limit(6).toArray();
@@ -292,6 +302,59 @@ const run = async () => {
       const query = {};
       const users = await productsCollection.find(query).toArray();
       res.send(users);
+    });
+    //booking
+    app.post("/bookings", async (req, res) => {
+      const booking = req.body;
+
+      const query = {
+        productName: booking.productName,
+      };
+
+      const alreadyBooked = await bookingsCollection.find(query).toArray();
+
+      if (alreadyBooked.length) {
+        const message = `This item is already booked`;
+        return res.send({ acknowledged: false, message });
+      }
+
+      const result = await bookingsCollection.insertOne(booking);
+      res.send(result);
+    });
+    //update product
+    app.put("/updateProduct/:id", verifyJWT, verifyBuyer, async (req, res) => {
+      const decodedEmail = req.decoded.email;
+      const query = { userEmail: decodedEmail };
+      const user = await usersCollection.findOne(query);
+
+      if (user?.userRole !== "buyer") {
+        return res.status(403).send({ message: "forbidden access" });
+      }
+
+      const id = req.params.id;
+      const filter = { _id: ObjectId(id) };
+      const options = { upsert: true };
+      const updatedDoc = {
+        $set: {
+          productStatus: "sold",
+        },
+      };
+      const result = await productsCollection.updateOne(
+        filter,
+        updatedDoc,
+        options
+      );
+      res.send(result);
+    });
+    //get booked
+    app.get("/bookedItem", async (req, res) => {
+      const query = {
+        email: req.query.email,
+      };
+
+      const cursor = bookingsCollection.find(query);
+      const id = await cursor.toArray();
+      res.send(id);
     });
     //stripe
     app.post("/create-payment-intent", async (req, res) => {
@@ -308,24 +371,6 @@ const run = async () => {
       });
     });
 
-    app.get("/jwt", async (req, res) => {
-      const email = req.query.email;
-      const query = { email: email };
-      const user = await usersCollection.findOne(query);
-      if (user) {
-        const token = jwt.sign({ email }, process.env.ACCESS_TOKEN, {
-          expiresIn: "1h",
-        });
-        return res.send({ accessToken: token });
-      }
-      res.status(403).send({ accessToken: "" });
-    });
-
-    app.get("/users", async (req, res) => {
-      const query = {};
-      const users = await usersCollection.find(query).toArray();
-      res.send(users);
-    });
     app.get("/categories", async (req, res) => {
       const query = {};
       const categories = await categoriesCollection.find(query).toArray();
@@ -337,6 +382,38 @@ const run = async () => {
       const result = await reportsCollection.insertOne(data);
       res.send(result);
     });
+    //get report
+    app.get("/reports", async (req, res) => {
+      const query = {};
+      const users = await reportsCollection.find(query).toArray();
+      res.send(users);
+    });
+    //delete report
+    app.delete(
+      "/deleteReport/:id",
+      verifyJWT,
+      verifyAdmin,
+      async (req, res) => {
+        const id = req.params.id;
+        console.log(id);
+        const filter = { productid: id };
+        const result = await reportsCollection.deleteOne(filter);
+        res.send(result);
+      }
+    );
+    //delete reported products
+    app.delete(
+      "/reportedProduct/:id",
+      verifyJWT,
+      verifyAdmin,
+      async (req, res) => {
+        const id = req.params.id;
+        console.log(id);
+        const filter = { _id: ObjectId(id) };
+        const result = await productsCollection.deleteOne(filter);
+        res.send(result);
+      }
+    );
     app.post("/users", async (req, res) => {
       const user = req.body;
       console.log(user);
