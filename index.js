@@ -116,6 +116,14 @@ const run = async () => {
       console.log(user);
       res.send({ isSeller: user?.userRole === "seller" });
     });
+    app.get("/verify/:userEmail", async (req, res) => {
+      const userEmail = req.params.userEmail;
+      const query = { userEmail };
+      console.log(query);
+      const user = await usersCollection.findOne(query);
+      console.log(user);
+      res.send({ isVerify: user?.isSellerVerified === true });
+    });
     //get sellers product
     app.get("/products", verifyJWT, async (req, res) => {
       const decoded = req.decoded;
@@ -269,7 +277,6 @@ const run = async () => {
       const query = {
         userEmail: req.query.email,
       };
-
       const cursor = usersCollection.find(query);
       const id = await cursor.toArray();
       res.send(id);
@@ -277,7 +284,7 @@ const run = async () => {
     //get product from category
     app.get("/category/:id", async (req, res) => {
       const id = req.params.id;
-      const query = { productCategory: id };
+      const query = { productCategory: id, productStatus: "available" };
       const sort = { length: -1 };
       const cursor = productsCollection.find(query).sort({ _id: -1 });
       const review = await cursor.toArray();
@@ -314,10 +321,10 @@ const run = async () => {
 
       const alreadyBooked = await bookingsCollection.find(query).toArray();
 
-      if (alreadyBooked.length) {
-        const message = `This item is already booked`;
-        return res.send({ acknowledged: false, message });
-      }
+      // if (alreadyBooked.length) {
+      //   const message = `This item is already booked`;
+      //   return res.send({ acknowledged: false, message });
+      // }
 
       const result = await bookingsCollection.insertOne(booking);
       res.send(result);
@@ -338,7 +345,6 @@ const run = async () => {
       const updatedDoc = {
         $set: {
           productStatus: "sold",
-          isAdvertise: false,
         },
       };
       const result = await productsCollection.updateOne(
@@ -381,6 +387,7 @@ const run = async () => {
         $set: {
           paid: true,
           transactionId: payment.transactionId,
+          isAdvertise: false,
         },
       };
       const updatedResult = await bookingsCollection.updateOne(
