@@ -302,7 +302,7 @@ const run = async () => {
       const query = { isAdvertise: false };
       const sort = { length: -1 };
       const cursor = productsCollection.find(query).sort({ _id: -1 });
-      const review = await cursor.limit(6).toArray();
+      const review = await cursor.toArray();
       res.send(review);
     });
     //get users
