@@ -49,6 +49,7 @@ const run = async () => {
     const categoriesCollection = client.db("bookRoy").collection("categories");
     const reportsCollection = client.db("bookRoy").collection("reports");
     const bookingsCollection = client.db("bookRoy").collection("bookings");
+    const paymentsCollection = client.db("bookRoy").collection("payments");
     //verify admin or not
     const verifyAdmin = async (req, res, next) => {
       const decodedEmail = req.decoded.email;
@@ -337,6 +338,7 @@ const run = async () => {
       const updatedDoc = {
         $set: {
           productStatus: "sold",
+          isAdvertise: false,
         },
       };
       const result = await productsCollection.updateOne(
@@ -370,7 +372,23 @@ const run = async () => {
         clientSecret: paymentIntent.client_secret,
       });
     });
-
+    app.post("/payments", async (req, res) => {
+      const payment = req.body;
+      const result = await paymentsCollection.insertOne(payment);
+      const id = payment.bookingId;
+      const filter = { _id: ObjectId(id) };
+      const updatedDoc = {
+        $set: {
+          paid: true,
+          transactionId: payment.transactionId,
+        },
+      };
+      const updatedResult = await bookingsCollection.updateOne(
+        filter,
+        updatedDoc
+      );
+      res.send(result);
+    });
     app.get("/categories", async (req, res) => {
       const query = {};
       const categories = await categoriesCollection.find(query).toArray();
@@ -387,6 +405,13 @@ const run = async () => {
       const query = {};
       const users = await reportsCollection.find(query).toArray();
       res.send(users);
+    });
+    //get bookings
+    app.get("/booking/:id", async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: ObjectId(id) };
+      const result = await bookingsCollection.findOne(filter);
+      res.send(result);
     });
     //delete report
     app.delete(
