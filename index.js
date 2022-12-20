@@ -321,11 +321,6 @@ const run = async () => {
 
       const alreadyBooked = await bookingsCollection.find(query).toArray();
 
-      // if (alreadyBooked.length) {
-      //   const message = `This item is already booked`;
-      //   return res.send({ acknowledged: false, message });
-      // }
-
       const result = await bookingsCollection.insertOne(booking);
       res.send(result);
     });
